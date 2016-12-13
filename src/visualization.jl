@@ -7,7 +7,6 @@ type DrakeVisualizerSink <: OdeResultsSink
 end
 
 function OdeIntegrators.initialize(sink::DrakeVisualizerSink, t, state)
-    DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()
     sink.lastUpdateTime = -Inf
 end
 
