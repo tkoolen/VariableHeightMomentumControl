@@ -33,7 +33,7 @@ function control(controller::VariableHeightMomentumController, t, state)
     soleFrame = controller.soleFrame
     mechanism = state.mechanism
     com = center_of_mass(state) - transform(state, Point3D(Float64, soleFrame), root_frame(mechanism))
-    v = velocity_vector(state)
+    v = velocity(state)
     A = momentum_matrix(state)
     m = mass(state.mechanism)
     comdot = FreeVector3D(A.frame, A.linear * v) / m
@@ -59,15 +59,13 @@ function control(controller::VariableHeightMomentumController, t, state)
     # PD control for upper body and free leg
     kp = 100.
     kd = 20.
-    q = configuration_vector(state)
-    v = velocity_vector
     for joint in controller.positionControlledJoints
         v̇pd = -kp .* configuration(state, joint) - kd .* velocity(state, joint)
-        @constraint(model, v̇[mechanism.vRanges[joint]] .== v̇pd)
+        @constraint(model, v̇[velocity_range(state, joint)] .== v̇pd)
     end
 
     # minimize squared joint accelerations
-    @objective(model, Min, sum{v̇[i]^2, i = 1 : nv})
+    @objective(model, Min, sum(v̇[i]^2 for i = 1 : nv))
 
     # solve
     status = solve(model)

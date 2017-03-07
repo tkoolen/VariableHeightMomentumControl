@@ -11,9 +11,9 @@ function solve_for_velocities!(state::MechanismState, momentum::Momentum, fixedJ
     @constraint(model, Array(A.linear) * v .== Array(momentum.linear))
     @constraint(model, Array(A.angular) * v .== Array(momentum.angular))
     for joint in fixedJoints
-        @constraint(model, v[state.mechanism.vRanges[joint]] .== 0)
+        @constraint(model, v[velocity_range(state, joint)] .== 0)
     end
-    @objective(model, Min, sum{v[i]^2, i = 1 : nv})
+    @objective(model, Min, sum(v[i]^2 for i = 1 : nv))
 
     status = solve(model)
     set_velocity!(state, getvalue(v))

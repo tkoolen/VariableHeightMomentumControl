@@ -10,11 +10,6 @@ using Gurobi
 using StaticArrays
 import RigidBodyDynamics: @framecheck
 
-# TODO: move to RigidBodyTreeInspector?
-using RigidBodyTreeInspector
-using DrakeVisualizer
-
-
 export
     VariableHeightMomentumController,
     DrakeVisualizerSink,

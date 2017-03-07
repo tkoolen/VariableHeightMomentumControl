@@ -1,3 +1,6 @@
+using RigidBodyTreeInspector
+using DrakeVisualizer
+
 type DrakeVisualizerSink <: OdeResultsSink
     vis::DrakeVisualizer.Visualizer
     Δt::Float64
@@ -12,7 +15,7 @@ end
 
 function OdeIntegrators.process(sink::DrakeVisualizerSink, t, state)
     if t > sink.lastUpdateTime + sink.Δt
-        draw(sink.vis, state)
+        settransform!(sink.vis, state)
         sink.lastUpdateTime = t
     end
 end
