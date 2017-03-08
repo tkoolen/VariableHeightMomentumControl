@@ -12,7 +12,7 @@ import RigidBodyDynamics: @framecheck
 
 export
     VariableHeightMomentumController,
-    DrakeVisualizerSink,
+    VisualizerOdeResultsSink,
     control,
     initialize_state!
 
