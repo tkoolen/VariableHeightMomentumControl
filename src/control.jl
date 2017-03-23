@@ -81,6 +81,6 @@ function control(controller::VariableHeightMomentumController, t, state)
     # inverse dynamics
     result = controller.dynamicsResult
     result.v̇ = getvalue(v̇)
-    inverse_dynamics!(controller.τ, result.jointWrenches, result.accelerations, state, result.v̇)
+    inverse_dynamics!(controller.τ, result.jointwrenches, result.accelerations, state, result.v̇)
     controller.τ
 end
