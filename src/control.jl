@@ -1,3 +1,5 @@
+using MomentumBasedControl.PDControl
+
 # See https://github.com/tkoolen/VariableHeightInvertedPendulum
 function cubic_orbital_energy_control_law(g, zf, x, z, xd, zd)
     a = xd / x
@@ -11,13 +13,14 @@ type VariableHeightMomentumController
     positionControlledJointReferences::Dict{GenericJoint{Float64}, Vector{Float64}}
     centroidalFrame::CartesianFrame3D
     soleFrame::CartesianFrame3D
+    pelvis::RigidBody{Float64}
 
     function VariableHeightMomentumController(
             mechanism::Mechanism, positionControlledJoints::Vector{GenericJoint{Float64}},
-            centroidalFrame::CartesianFrame3D, soleFrame::CartesianFrame3D)
+            centroidalFrame::CartesianFrame3D, soleFrame::CartesianFrame3D, pelvis::RigidBody{Float64})
         τ = zeros(num_velocities(mechanism))
         positionControlledJointReferences = Dict(j => zeros(num_positions(j)) for j in positionControlledJoints)
-        new(τ, DynamicsResult{Float64}(mechanism), positionControlledJointReferences, centroidalFrame, soleFrame)
+        new(τ, DynamicsResult{Float64}(mechanism), positionControlledJointReferences, centroidalFrame, soleFrame, pelvis)
     end
 end
 
@@ -59,7 +62,7 @@ function control(controller::VariableHeightMomentumController, t, state)
     @framecheck A.frame ḣdes.frame
     @framecheck A.frame Ȧv.frame
     @constraint(model, Array(A.linear) * v̇ + Array(Ȧv.linear) .== Array(ḣdes.linear))
-    @constraint(model, Array(A.angular) * v̇ + Array(Ȧv.angular) .== Array(ḣdes.angular))
+    # @constraint(model, Array(A.angular) * v̇ + Array(Ȧv.angular) .== Array(ḣdes.angular))
 
     # PD control for upper body and free leg
     kp = 100.
@@ -68,6 +71,19 @@ function control(controller::VariableHeightMomentumController, t, state)
         v̇pd = kp .* (q_desired .- configuration(state, joint)) - kd .* velocity(state, joint)
         @constraint(model, v̇[velocity_range(state, joint)] .== v̇pd)
     end
+
+    # Pelvis orientation control
+    pelvisgains = PDGains(10., 2.)
+    Hpelvis = transform_to_root(state, controller.pelvis)
+    Tpelvis = transform(twist_wrt_world(state, controller.pelvis), inv(Hpelvis))
+    ωdpelvis = pd(pelvisgains, rotation(Hpelvis), Tpelvis.angular)
+    Ṫpelvis = SpatialAcceleration(Tpelvis.body, Tpelvis.base, Tpelvis.frame, ωdpelvis, zero(ωdpelvis))
+    p = path(mechanism, root_body(mechanism), controller.pelvis)
+    nv = num_velocities(state)
+    J = GeometricJacobian(default_frame(controller.pelvis), default_frame(root_body(mechanism)),  Ṫpelvis.frame, Matrix{Float64}(3, nv), Matrix{Float64}(3, nv))
+    geometric_jacobian!(J, state, p)
+    Jdotv = transform(state, bias_acceleration(state, controller.pelvis), Ṫpelvis.frame)
+    @constraint(model, J.angular * v̇ + Jdotv.angular .== Ṫpelvis.angular)
 
     # minimize squared joint accelerations
     @objective(model, Min, sum(v̇[i]^2 for i = 1 : nv))
