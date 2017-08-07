@@ -1,4 +1,4 @@
-function solve_for_velocities!(state::MechanismState, momentum::Momentum, fixedJoints::Vector{Joint{Float64}})
+function solve_for_velocities!(state::MechanismState, momentum::Momentum, fixedJoints::Vector{GenericJoint{Float64}})
     solver = Gurobi.GurobiSolver()
     Gurobi.setparameters!(solver, Silent = true)
     model = Model(solver = solver)
@@ -19,16 +19,7 @@ function solve_for_velocities!(state::MechanismState, momentum::Momentum, fixedJ
     set_velocity!(state, getvalue(v))
 end
 
-function initialize_state!(
-        state::MechanismState, xd::Float64, positionControlledJoints,
-        ankleRoll::Joint, hipRoll::Joint, knee::Joint, hipPitch::Joint)
-    zero!(state)
-    θroll = 0.13
-    θknee = 1.
-    configuration(state, ankleRoll)[:] = θroll
-    configuration(state, hipRoll)[:] = -θroll
-    configuration(state, knee)[:] = θknee
-    configuration(state, hipPitch)[:] = -θknee
+function initialize_state!(state::MechanismState, xd::Float64, positionControlledJoints)
     setdirty!(state)
     com = center_of_mass(state)
     centroidalFrame = CartesianFrame3D()

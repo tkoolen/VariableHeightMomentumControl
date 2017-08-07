@@ -8,16 +8,21 @@ end
 type VariableHeightMomentumController
     τ::Vector{Float64}
     dynamicsResult::DynamicsResult{Float64}
-    positionControlledJoints::Vector{Joint{Float64}}
+    positionControlledJointReferences::Dict{GenericJoint{Float64}, Vector{Float64}}
     centroidalFrame::CartesianFrame3D
     soleFrame::CartesianFrame3D
 
     function VariableHeightMomentumController(
-            mechanism::Mechanism, positionControlledJoints::Vector{Joint{Float64}},
+            mechanism::Mechanism, positionControlledJoints::Vector{GenericJoint{Float64}},
             centroidalFrame::CartesianFrame3D, soleFrame::CartesianFrame3D)
         τ = zeros(num_velocities(mechanism))
-        new(τ, DynamicsResult(Float64, mechanism), positionControlledJoints, centroidalFrame, soleFrame)
+        positionControlledJointReferences = Dict(j => zeros(num_positions(j)) for j in positionControlledJoints)
+        new(τ, DynamicsResult{Float64}(mechanism), positionControlledJointReferences, centroidalFrame, soleFrame)
     end
+end
+
+function set_desired_configuration!(controller::VariableHeightMomentumController, joint::Joint, qdes::AbstractVector)
+    controller.positionControlledJointReferences[joint] .= qdes
 end
 
 function control(controller::VariableHeightMomentumController, t, state)
@@ -59,8 +64,8 @@ function control(controller::VariableHeightMomentumController, t, state)
     # PD control for upper body and free leg
     kp = 100.
     kd = 20.
-    for joint in controller.positionControlledJoints
-        v̇pd = -kp .* configuration(state, joint) - kd .* velocity(state, joint)
+    for (joint, q_desired) in controller.positionControlledJointReferences
+        v̇pd = kp .* (q_desired .- configuration(state, joint)) - kd .* velocity(state, joint)
         @constraint(model, v̇[velocity_range(state, joint)] .== v̇pd)
     end
 
