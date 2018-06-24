@@ -5,7 +5,7 @@ function cubic_orbital_energy_control_law(g, zf, x, z, xd, zd)
     u = -7 * a^2 + (3 * zf * a^3 - g * a) / b - (10 * a^3 * b) / g
 end
 
-type VariableHeightMomentumController
+mutable struct VariableHeightMomentumController
     τ::Vector{Float64}
     dynamicsResult::DynamicsResult{Float64}
     positionControlledJointReferences::Dict{GenericJoint{Float64}, Vector{Float64}}
